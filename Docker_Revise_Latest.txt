@@ -1,0 +1,224 @@
+DOCKER
+
+libcontainer written in golang-daemon, cintainerd are within libcontainer
+runC - will create container -- shim-is an internal process&moniters container performance
+
+**Start From Dell**
+DOCKER CLASS 1 , 2 , 3 , 4
+______________________________
+
+DOCKER ARCHITECTURE
+
+Docker daemon--within docker daemon 1.lib container -- within libcontainer1--runc	
+containerd&runc communicates to SHIM
+runc creates the container & shim monitor the process of the container
+wndows 10- WSL -windows subsystem layer
+in windows thr is one kitematic tool is used to install or create a environment 
+docker location /var/lib/docker
+
+#docker pull centos
+#docker container run -itd --name linuxcon100 centos
+#docker container exec -it linuxcon100 bash
+
+#docker container run -itd --name linuxcon100 -p 8007:80 nginx
+if we give -P , it will assign random port
+#docker container run -itd --name linuxcon100 -P nginx
+
+to inspect
+#docker inspect image nginx 
+#docker inspect container containerName
+
+#docker container stop cont.ID
+#docker container rm --force cont.ID
+if we give force the following incident will happen
+container kill-container die-container network dicconnect-container destroy
+
+#docker container start
+#docker info
+
+docker location /var/lib/docker
+***END from Dell*************
+
+
+
+#docker container rm -f $(docker container ls -a -q)
+
+connect remote docker host
+docker container -H hostip command
+#docker container run -itd --name baselinux100 --memory 500m centos bash
+#docker container stats
+
+gotoinside the container
+#docker container exec -it webserver01 bash
+
+DOCKER FILE
+mkdir project
+cd project
+vim Dockerfile
+FROM ubuntu:latest
+LABEL webapp:v1.0
+RUN apt-get update
+RUN apt install tree && apt install git
+****************************
+
+DOCKER CLASS 5 & CLASS 6
+__________________________
+
+To remove all the containers in one shot
+#docker container rm -f $(container ls -a -q)
+
+#docker container logs linuxcon100
+
+to check container resorce consume(below cmnd shows cpu,mem,io,block(disk))
+#docker container stats
+ to set limit when we create container
+#docker container run -itd --name baselinux100 --memory 500m centos bash
+
+Every container runs in a process in linux OS. we can check this from Linux server
+
+#systemd-cgtop
+#systemd-cgls -cpu
+#ls -lai /proc/containerID/ns
+
+Image build through Dockerfile
+[#mkdir test100
+vi Dockerfile
+FROM ubuntu:latest
+LABEL webimage=v1.0
+RUN apt-get update -y
+RUN apt-get install tree -y && apt-get install git -y]
+
+Then build
+#docker image build -t webappimage:V1.0.0 .   [ref.class5 1.50]
+
+Layer concept:
+Layer eg: centos 100mb(intermediate container) + tree25md(int.med.cont) + git75mb(inter.med.container) total 200mb 
+Top of the container thr is thin R/W layer will be created and we can
+patch, save file in that layer only. If the container deleted ,all the files also will be deleted.
+
+Dockerfile impot. parameters:
+FROM , LABEL , RUN , COPY , ADD (Copy &add are same but ADD supports URL but COPY don't)
+FROM,RUN,LABEL..etc are build instruction && CMD,EXPOSE etc..are running instruction
+Diff. between ENTRYPOINT & CMD : Both does the same work but We can overwrite CMD content but
+can not overwrite the content in ENTRYPOINT
+
+
+Eg:
+[#mkdir test200
+vi Dockerfile
+FROM nginx
+LABEL "com.abc.example"=appv1.0.0
+RUN apt-get update -y
+RUN mkdir -p /test/user
+COPY index.html /usr/share/nginx/html
+EXPOSE 80]
+
+[vi index.html
+<html>
+  <body bgcolor="blue"> 
+      <h1> Welcome to docker </h1>
+  </body>
+</html>]
+then build
+#docker image build -t webimage:v1.0.0 .
+#docker container run -itd --name webcon01 -p 8006:80 webimage:v1.0.0
+#docker container exec -it webcon01
+to check with curl:
+#curl http://containerIP:80
+***
+
+
+#docker image build -t webimage:v1.0.0 .
+#docker image history imageID
+#docker image inspect imageID
+
+DOCKER location:
+/var/lib/docker
+PORTAINER:
+docker container run -d -p 9000:9000 -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer
+
+ghg0diff. between entrypoint and cmd - entrypoint can't be overwrite but
+cmd can be overwrite 
+
+DOCKER COMPOSE URL:
+#sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)"
+-o /usr/local/bin/docker-compose
+#sudo chmod +x /usr/local/bin/docker-compose
+*****************************************************
+
+CHAPTER 7 - DOCKER NETWORKING
+_________________________________
+
+#docker network ls
+#docker network inspect networkid
+#brctl show
+Network create
+#docker network create --driver bridge mynetwork-brg02 --subnet 10.0.0.0/16 --gateway 10.0.0.1
+create a container with our network bridge
+#docker container run -itd --name linux03 --network mynetwork-brg02 alpine
+connect 2 different network containers
+#docker network connect mynetwork-brg02 linux02
+
+NOTE: we can create many nos of bridge network driver but there is only one "HOST"& "NULL" network driver.
+
+to check docker Cgroup from linux
+#systemd-cg ->#systemd-cgls cpu
+Bydefault,docker container inherits dns settings of the host,as defined in the /etc/resolv.conf. 
+embeded internal DNS ip is 127.0.0.11
+
+DOCKER VOLUME (anonyms & named volume)
+In container host we have to create one folder for volume
+dockerhost900#mkdir -p /test/data
+#docker container run -itd --name mycon03 -v /test/data:/test/containerdata ubuntu
+We may give volume name also & map the container to tht volume (default path is /var/lib/docker/volume)
+dockerhost900#docker volume create myvolumetest
+#docker container run -itd --name mycon06 -v myvolumetest:/test/mydata ubuntu
+BIND VOLUME
+dockerhost900#docker container run -itd --name testcon100 --mount type=bind /etc/nsswitch.conf:/etc/nsswitch.conf
+TMPFS VOLUME
+#docker container run -itd --name brokencon01 --mount type=bind,source=/tmp,target=/usr nginx:latest bash
+******************************************
+
+DOCKER: 8
+____________
+
+DOCKER COMPOSE & STACK
+
+Compose important fields: 
+  *version
+  *services
+  *volumes
+  *networks
+
+compose doesnt share load. work only one node.It works only stand alone.
+stack is an in-built tool in docker.stack works only cluster nodes like swarm
+compose can pull the image & create container
+#docker-compose -f sample-app.yaml up -d
+
+To scale:
+#docker-compose -f sample-app.yaml scale web-app=4 db-app=4
+
+
+example: create one dockerfile and build it through docker-compose
+dockerhost900#sample-app#vi dockerfile
+FROM nginx
+LABEL .com.abc.example=appv1
+RUN apt-get update -y
+RUN apt-get install git -y
+CMD ["/bin/bash"]
+
+docker-compose
+dockerhost900#sample-app#vi sample-app.yaml
+---
+version: "3.9"
+services:
+  web-app:
+    build: .
+  db-app:
+    image: redis
+---
+image -- pull & build it will build from docker file
+DOCKER-COMPOSE RUN
+#docker-compose -f sample-app.yaml up -d	
+NOTE : copy the DB docker-compose file from this session video
+

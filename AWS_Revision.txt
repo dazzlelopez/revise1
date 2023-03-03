@@ -1,0 +1,154 @@
+EKS:
+https://www.youtube.com/watch?v=U3SowMbnqBw&ab_channel=CloudGuru
+
+all EKS related:
+https://www.youtube.com/watch?v=eT1BndKVca4&ab_channel=LearnITGuideTutorials
+
+EKS cluster creating through EKSCTL : https://www.youtube.com/watch?v=QXzYIKZxxHc&ab_channel=LearnITGuideTutorials
+
+Attach EFS volume to EKS:  https://www.youtube.com/watch?v=cqWa_ruMW3w&ab_channel=SudheerDevOps
+1.oidc (open ID connect) - is used to connect between IAM sevice and EKS cluster
+
+ECR:
+https://www.youtube.com/watch?v=Brm21SWac-I&ab_channel=LinuxHelp
+
+3 tier architecture
+https://www.youtube.com/watch?v=FL22u8J8t1k&ab_channel=CloudArchitectRahul
+
+https://www.youtube.com/watch?v=sCBTeMd0Jj4&ab_channel=AjitInamdarTech
+
+1.cretae 1 VPC
+2.create 3 subnets for public-web subnets
+3.cretae 3 subnets for private-app subnets
+4.create 3 subnets for private-db subnets
+5.create 3 route table (1 public-web-route + 1 private-app-route + 1 private-db-route)
+6.do subnet association with each RT (eg: public-web-route with 3 public-web-subnets)
+7.create INTERNET GW & attach it to VPC
+8.cretae NAT GW in public subnet
+9.add route in web-public route table to IGW (edit route->0.0.0.0/0 ->target IGW)
+10.add route in app-private route table to NAT GW(edit route->0.0.0.0/0 ->target NAT GW) 
+11.add route in db-private route table to NAT GW(edit route->0.0.0.0/0 ->target NAT GW)
+12.create 1 ec2 instance for jump-server->give sg name as jump-server-sg
+13.create 1 ec2 instance for app-php-server1 ->select PRIVATE SUBNET1-> give name as my-php-appserver-sg->ALLOW THE SSH    CONNECTION TO (SOURCE ONLY FROM THE JUMPSERVER-SG)
+14.create 1 ec2 instance for app-php-server2 ->select PRIVATE SUBNET2-> give SECURITY GROUP name as the previous one (my-php-appserver-sg->ALLOW THE SSH    CONNECTION TO (SOURCE ONLY FROM THE JUMPSERVER-SG)
+15.log in to the app server to install PHP & APACHE , create user name & passwd
+16.create ALB and add the target as  2 private instances in it
+17.go to instances->add alb-security group to the instances
+18.go to LB section->copy DNS name->paste it in the browser & check whether the test page in appearing 
+19.go to RDS->subnet groups->create subnet group name as "my-db-subnet-sg"->select AZ->select DB subnet->create
+20.go to RDS->create DB instance-
+21.enable connectivity between DB server & APP server(go to connectivity&Security->click VPC sg->add inbound rule for PHP server->custom TCP-port range as "3306"-in the source select "app-server-sg"- and delete the other default rule-save
+22.copy the endpoints->go the PHP server page->cd phpMyAdmin->mv config.sample.inc.php config.inc.php->vim config.inc.php->
+replace the local host with rds instance host-save->go to url and /myPhpAdmin it will open the page
+23.
+   
+ 
+---------------------------------------------------------------------------
+
+VPC PEERING
+vpc peering is not a transitive,must be established for each VPC tht needs to communicate each other
+must update route tables in EACH VPC SUBNETS to ensure instances can communicate-it works inter-region cross account
+-----------------------------------------------
+VPC END POINTS
+instances->private inst->assign IAM role to access S3(create IAM role with S3 full access & attach it to the private instance)
+next- create end point->select S3 interface->select VPC->select route table with 2 private subnets->then it will show 
+one url type like pl-6da(com.amazon.com)->then check aws s3 ls --region eu-west-1 (the default region of the aws cli is us-east-1)
+----------------------------------------------
+SITE TO SITE VPN
+customer GW from corp.DC ->SITE TO SITE VPN CONNECTION LINKS THE BOTH<-VPN GW from VPC side 
+-----------------------------------------------
+DIRECT CONNECT (DX)
+provides a dedicated private connection from a remote n/w to your VPC
+AWS Direct connect location within this[aws direct connect endpoint cage + customer router cage] + customer router firewall  
+[+ MEANS LINKED with PRIVATE VIRTUAL INTERFACE]- and Virtual private GW attached with the VPC directly connected with AWS DIRECT CONNECT END POINT
+-----------------------------------------------
+
+
+
+
+
+
+
+Refer DEVSTEIN
+Classic LB health check port 4567 - it supports http,https,tcp
+ALB supports http,https,websocket
+NLB supports tcp,udp,tls(secure tcp)
+user-loadbalancer-ec2 ( LB has own security group-ec2 has own security grou and ec2 sg references the LB's SG)
+common troubleshooting:
+4xxx-client induced errors, 5xx-appln induced errors,LB 503 errors means capacity or no registered target
+LB can't connect your appl ,check your SG
+
+ALB -- traffic comes from the NLB - we can enable it in the target group -ok
+NLB - we must use one IP per AZ - traffic comes from the external client
+
+STICKINESS: it supports only ALB & CLB
+stickiness enable same client is always redirected to the same instance - it may bring imbalance the load over backend ec2
+
+CROSS ZONE LOADBALANCERS
+evenly distributed across the az's instances but without CZLB it distributes instances of the node of the loadbalancer
+always on in ALB can't disable
+disabled bydefault in NLB
+CLB- through console -> enabled by default. through CLI->disabled by default
+
+SSL
+SSL secure socket layer allows traffic between your client & LB to be encrypted in traffic(in-flight encryption)
+TLS Transport Layer Security is a newer version
+LB uses an X.509  certificates(SSL/TLS server Certificates)
+you can manage certificates using ACM(Amazon Certificate Manager)
+SNI-Server Name Indication - its used to loading multiple SSL cert. on to one webserver- only works on ALB&NLB&cloudfront
+we can deploy multiple SSL cert. through SNI - CLB doesn't support multiple SSL sert. & SNI
+
+CONNECTION DRAINING
+stops to send new request to the instance which is de-registering (de-registration delay-300secs by default)
+
+Auto Scaling Group ASG - Scaling policy
+1.Target Tracking Scaling (eg:I want avrg ASG CPU to stay at around 40%)
+2.Simple/Step Scaling (when a cloudwatch alarm is triggered eg: CPU > 70% then add 2 units and CPU < 30% remove 1 unit)
+3.Scheduling Actions (eg: increase the min. capacity to 10 at 5pm on fridays)
+ASG - Scaling cool down have doubt
+-------------------------------------------------------
+
+ROUTE53
+
+Its a global not a region specific. go to route53 service and cretae register & hosted zone section
+Routing policies : 1.Simple 2.Failover 3.Geolocation 4.Latency 5.Weighted 6.multivalue
+Simple policy - its a simple one domain to one ip
+Weighted policy- we can set landing instance 70 to Ireland 20 to US 10 to Tokyo 
+LATENCY policy - redirect to the server that has least latency close to us. super helpful when the latency of users is a priority
+Failover policy - if the health fails on primary instance it will failover to secondary instance (we must give healthcheck
+name when we create a recordset for primary but don't give on secondary instance)
+Geolocation policy - it differant from latency based - This routing is based on user location. we can give IP and relevant location
+GEOPROXIMITY policy - it is configured with BIOS based
+MULTI VALUE policy 	-  it is same as failover without primary&secondary defined.
+--
+Healthcheck - created 3 health checkon Ireland,US,Tokyo ( it will be usefull for FAILOVER ROUTING POLICY)
+
+
+TTL - to be cached specific time like 300 secs
+CNAME points a host name to any other host name - ONLY FOR NON ROOT DOMAIN(app.mydomain.com=>blabla.anything.com)
+ALIAS points a host name to any other AWS Resource name -WORKS FOR BOTH ROOT & NONROOT DOMAIN - its free
+	
+
+
+
+#/bin/bash
+yum update -y
+yum install httpd -y
+systemctl start httpd
+systemctl enable httpd
+echo "<H1> Hello world from $(hostname -f)</H2>" > /var/www/html/index.html
+
+
+
+hostnamectl set-host 
+netstat -tulnp
+top, ps -ef , ps  | aux
+1.routing table #netstat -rn -> defaultGW->internet access must given by network team->ping 8.8.8.8
+or traceroute 8.8.8.8 and DNS(port53) configuration check(/etc/resolve.conf within kpn dns name + FQDN)
+finally ethernet card check + check iptables ->iptables -l -take backup of iptables and give iptables -f - 
+systemctl stop firewalld - 
+vmstat- in vmstat residential memory + swap in/out shouldn't be frequent
+.bashrc-> export ABC = "true"
+nslookup -> /etc/hosts 
+page download : wget 
+systemd - rhcel 7 onwards systemd is the 1st process when the system boots-> paralel start of all the process.

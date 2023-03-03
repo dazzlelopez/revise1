@@ -1,0 +1,857 @@
+ETCD -- is a Database which has a key-value format about container->NodeLabel
+Scheduler  --identifies the right node to schedule a container(based on container requirement,
+worker node capacity,any other policies,taints&toleration,etc)
+controller -- controller available for take care of differrent areas,-Node ctl take care of Nodes
+              Replication controller take care of desired container running all times,
+			  KUBE-API server is PRIMARY management of orchastrting all operation within the cluster.
+KUBELET -- is captain of the ship.kubelet is an engine runs on all the nodes& its listens an instructions from the API server.
+           like deploy or destroy--,. API fetches periodicall status report from KUBELET.
+KUBEPROXY -- ensures neccessary rules the worker nodes aloows the container to communicate which is running on other worker nodes
+              in simple words kubeproxy enabling communication between services within the cluster.
+			  
+
+
+
+KUBE 2
+__________
+
+#kubectl cluster-info
+We can configure kubectl in any where but you have to specify the api server infn
+in the config. file (kubectl entry). kubectl-api server link will be there in the below file
+#vi~/.kube/config
+
+Pod is the smallest deployable unit
+apiserver,etcd,controler,scheduler
+inside docker -- shim, runc are there	
+
+pod creation
+ [#kubectl run mypod --image=nginx]
+ Pod deletion
+#kubectl delete pod mypod	
+
+Deployment
+apiVersion: apps/v1 
+kind: Deployment
+metadata:
+  name: web-app
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+ [strategy:
+    type: RollingUpdate
+	  rollingUpdate:
+	    maxUnavailable: 1
+		maxSurge: 1 ]
+  selector:
+    matchLabels:
+	  app: nginx
+  template:
+    metadata:
+	  labels:
+	    app: nginx
+    spec:
+	  containers:
+	  - name: nginx
+        image: nginx:1.14.2
+	 [  resources:
+		  limits:
+		    memory: 200Mi
+		  requests:
+		    cpu: 100m
+			memory: 200Mi ]
+     [ nodeSelector:
+         gpu: nvidia    ]	  
+	 [  readinessProbe:
+		  httpGet:
+		    path: /
+			port: 80
+		  timeoutSeconds: 20  ]
+		  
+		  
+	   
+#kubectl create -f mydeploy.yaml  
+#kubectl replace -f mydeploy.yaml
+on the fly
+#kubectl edit deploy web-app
+
+Kubernetes monitor only podresource-health not application health 
+
+kubectl describe deployment web-app
+kubectl describe pod podname
+
+**START From Dell**
+
+KUBERNETES
+KUBERNETES CLUSTER PORT : 6443
+pod creation roadmap : kubectl->API->kubelet->create container pod
+API,scheduler,controller,etcd are also containers but it is STATIC PODS.
+
+1.KUBEADM
+2.KUBESPRAY
+#kubectl get nodes
+kubeadm, kubectl,--command  kubelet--its a component not a command
+#kubectl --namespace kube-system get pods
+API SERVER
+ETCD
+CONTROLER
+SCHEDULER
+CHECK OUTPUTS IN DETAIL:
+#kubectl --namespace kube-system get pod -o wide
+#kubectl get nodes -o wide
+to support API check:
+#kubectl api-resources
+
+#kubelet apt-mark hold kubelet kubeadm kubeadm
+
+if we want to give a new token, before tht,
+#kubeadm reset -f
+
+TO CHECK THE FLANNEL NETWORK
+#kubectl -n kube-system describe pod kube-flannel-ds-fd9rp
+KUBERNETES CONFIG FILE LOCATION(kubectl works only for this config file)
+#vi ~/.kube/config
+
+INSIDE THE DOCKER 2 MAJOR COMPONENTS ARE THERE 1.RUNC 2.SHIM
+POD : PODS ARE THE SMALLEST DEPLOYABLE UNITS OF COMPUTING THT U CAN CREATE & MANAGE
+ IN KUBERNETES.A Pod (as in a pod of whales or pea pod) is a group of one or more containers, with shared storage and network resources, and a specification for how to run the containers. A Pod's contents are always co-located and co-scheduled, and run in a shared context. A Pod models an application-specific "logical host": it contains one or more application containers which are relatively tightly coupled. 
+
+POD CREATION
+#kubectl run mypod --image=nginx
+DEPLOYMENT FILE
+apiVersion: apps/v1
+Kind
+  pod,deployment,..
+Metadata
+  name,namespace,label,..
+Spec
+  desired state,..
+Status
+  actual status,..
+ create deployment
+#kubectl create -f mydeploy.yaml
+#kubectl get pods -o wide
+#kubectl delete pod mypod
+to check all pods
+#kubectl get all
+if we modify the file and again run the deployment file
+#kubectl replace -f mydeploy.yaml
+if we want to edit fly method
+#kubectl get deploy
+#kubectl edit deploy web-app 
+#kubectl delete deploy web-app
+
+#kubectl get cs - to check the health status
+
+#kubectl describe deployment web-app
+**END From Dell**
+
+ 
+KUBE 3  
+-------
+kind: followed by anyhing is called "objects"(eg:deployment,pod,service..etc)
+
+deployment creation example through imperative method but it will create in declarative:
+#kubectl create deploy mob-app --image=nginx -o yaml --dry-run=client > mobdeploy.yaml
+#kubectl create deploy mob-app --image=nginx -o yaml > mobdeploy.yaml
+
+we can specify cpu,memory limits in the container spec fields [refer line no.42]
+f:resources: {
+    cpu:
+	memory:
+	}
+
+in master doesn't schedule any pods b'caz of "taints: noschedule fields	
+
+Daemonset : watches no. of nodes - one node->one pod - no replicas
+  system related/created daemonset only create in masternode but it will not create our own daemonset in master.
+  
+Deployment : watches pods- maintains no. of replicas specified in the deployment
+
+NodeLabel: nodeSelector
+#kubectl get nodes --show-label
+to set node label
+#kubectl label node kubenode200 gpu=nvidia
+nodeSelector in deployment file : refer line 48,49
+
+nodeAffinity 
+RequiredDuringSchedulingIgnoreDuringExecution
+nodeAntiAffinity
+prefferredDuringSchedulingIgnoreDuringExecution
+
+Taints: & Toleration
+to check the tainted nodes:
+#kubectl describe nodes | egrep "Name:|Taints:"
+to make taint:
+#kubectl taint nodes kubenode100 production=pods:NoSchedule
+to remove taint:
+#kubectl taint nodes kubenode100 pods production-
+
+Pod is controlled by replicaset
+replicaset is controled by deployment
+
+conditions:
+type:            status:
+Initialized       ready
+Ready             ready
+ContainersReady   ready
+PodScheduled      ready
+
+if the above all 4 types are in ready status then only the main ready will become Ready
+Ready : True
+
+ReadynessProbe (only check initial stage of pod) & LivenessProbe ( regularly check applns. in pod)
+refer line 50-54
+
+**START From Dell**
+
+took snapshot
+#mkdir /testlab100
+#cd testlab100
+#vi mydeploy.yaml
+apiVersion: apps/v1
+kind: deployment
+metadata:
+  name: web-app
+  labels:
+    env: prod
+spec:
+  replicas: 6
+  strategy: 
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 3
+	  maxSurge: 1
+  selector:
+    matchLabels:
+      env: prod
+  template:
+    metadata:
+      labels:
+        env: prod
+  spec:
+    containers:
+      - name: nginx-web
+        image: nginx:1.14	  
+	
+TO CREATE NEW DEPLOYMENT 
+#kubectl create deploy mob-app --image=nginx -o yaml --dry-run=client > mobdeploy.yaml
+
+SCHEDULER WILL DECIDE THE NODE ALLOCATION BASED ON THE LOAD IN THE EACH NODES.
+
+DAEMONSET:
+%master doesn't schedule any pods itself b'coz thr is one option called "taints". in tht taints one option is called "no schedule".we can see it through the below command
+#kubectl describe node kubemaster
+
+DAEMONSET is used for installing agents, logs. Deployment concentrates on pods ,replicas
+but daemonset concentrates on nodes each node-each pod.
+
+nodeSelector
+
+image - video graphic card example in class video
+First we have to set label for nodes ( we can give more than one label to any node)
+
+#kubectl label node kubenode200 gpu=nvidia
+to check
+#kubectl get nodes --show-labels
+
+took snapshot for this manifest file (graph-app)
+[pod deletion method
+ #kubectl get all
+ #kubectl delete deploy db-app
+ #kubectl delete deploy front-app
+]
+#kubectl create -f mobdeploy.yaml
+podAffinity- to instruct to run on specific node
+podAntiAffinity- to instruct not to run on any specific node
+example nvidia-telesa %took snapshot (pod affinity&antiaffinity)%must see%
+
+TAINTS:we can manually do taints" on node. example for maintenence activity
+we can taint one particular node.
+#kubectl taint nodes kubenode100 production=pods:NoSchedule
+to check taint status:
+#kubectl describe nodes | egrep "Name:|Taints:"
+
+REMOVE TAINTS:
+#kubectl taint nodes kubenode100 pods production-
+
+procedure step by step - whts happening in the pod
+took snapshot (graph-app,replicas 40)
+pod is controled by ReplicaSet(rs)
+#kubectl describe pod podname
+it is controled by ReplicaSet rs
+replicaset controled by deployment#kubectl describe rs rsname
+
+stepbystep
+1.PodScheduled - true
+2.ContainerReady -true3.
+3.Initialized -true
+4.in the up ready
+after the above 4 ready then only the main ready will appear- eg:
+#kubectl get pods (output)
+ to check error pod
+took snapshot (db file with env variable)
+how to go to inside the pod
+#kubectl exec -it db-app-8946489 bash
+readinessprobe-container check while starts
+livenessprobe- container check while running.
+startup probe -
+
+**END From Dell** 
+
+KUBE 4
+_________
+
+Namespace ( took notes lab laptop)
+
+kubeadm is an bootstraping command
+
+
+Default system pods:
+kubeapi server
+kubescheduler
+kubecontroller
+etcd
+
+Static pods will start once we give kubeadm init command ..It will create static pods on master node only
+
+Static pods creation instruction path in cd /var/lib/kubelet there is a config.yaml file within tht thereis one manifest file 
+the path is : cd /etc/kubernetes/manifests there are 4 files are there 1.etcd2.kubeapiserver3.kube-contro4.kubescheduler
+ 
+
+ConfigMap:
+To use store noncofidential data
+#kuectl create configmap game-properties --from-file=game-config-file
+
+Secret file:
+use to store sensitive data
+
+example:
+
+#echo -n "sqladmin" | base64
+qwer
+#echo -n "password123" | base64
+cdsff
+vi secret.config
+DB_USERNAME = qwer
+DB_PASSWORD = cdsff
+wq!
+then create secret 
+#kubectl create secret generic dbcredentials
+
+to create secret file **updated on JUNE15-2022
+#kubectl create secret generic db-secret --from-literal=db-user="encryptedvalue" --from-literal=db-password="encryptedvalue"
+#kubectl describe secret db-secret
+it will show the details
+then show it in wide
+#kubectl get secret db-secter -o wide
+
+The above same will be in imperative method(below)
+#vi secret-test.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secret
+data:
+  DB_USER: encryptedvalue
+  DB-PASSWORD: encryptedvalue
+:wq!
+Then we have to map this file in to Pod
+
+ 
+Routingmesh: If the pod is not running on the one node the service willautomatically redirect to the another pod
+which is running on the another node
+
+STATEFULSET maintains the sticky identity --ordinal numbers-- master is always master with the same index-name in staefullset
+
+**START From Dell**
+KUBE4-CLASS4
+
+NAMESPACE- we can create namespace & create a deploy within this namespace.
+when we create a pod through deployment it will be in "default" namespace.
+we can create same "deployment name" within different namespace.
+eg: create production namespace, web-app deployment
+#kubectl get ns
+#kubectl create deploy web-app --image=nginx --replicas=4 (it'll create
+web-app in default ns)
+#kubectl create namespace production
+then we can create web-app deployment in this ns
+#kubectl create deploy web-app --image=nginx --replicas=4 --namespace production
+#kubectl -n production describe deployment web-app 
+took snapshot- to create a deployment through manifest file with namespace
+
+Kubelet config file location
+#cd /var/lib/kubelet
+#ls
+#cat config.yaml
+in tht file,staticpodPath:/etc/kubernetes/manifests
+
+SERVICE:
+
+
+1.NodePort
+2.ClusterIP
+3.LoadBalancer
+DEFAULT IS CLUSTERIP
+%%#kubectl get svc%% -to check the services running in the system.
+%%#kubectl delete svc game-deploy%%-to delete the service running in the system
+eg: consider game-deploy is an deployment.bring this deploy in to service
+#kubectl expose deploy game-deploy --port=80 --target-port=80 --type=NodePort
+
+To save the service file in yaml through imperative command
+[#kubectl expose deploy game-deploy --port=80 --target-port=80 --type=NodePort -o yaml >service.yaml]
+
+LoadBalancer:
+
+took snapshot for metallb
+metallb link:
+search kubernetes metallb
+https://metallb.universe.tf/installation/
+1.go to installation then 2. configuration & give our IP range in the config file
+[to write a config map to set an IP range 
+#vi metallb-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata: 
+  namespace: metallb-system
+  name: config
+data:
+  config:
+    address-pools:
+    - name: default
+      protocol: layer2
+      addresses:
+      - 192.168.0.200-192.168.0.210 ]
+      
+After this check #kubectl get svc
+#kubectl create -f metallb-config.yaml
+#kubectl get svc 9thiswill show the IPrange populated infn)
+
+#kubectl get cs - to check the health status
+
+**END From Dell**
+
+KUBE5-CLASS5
+_______________
+
+CLUSTERIP
+#mkdir service-lab
+#vi web-app.yaml for frontend
+#vi sqldb.yaml   for backend
+2deployments created.
+then, have to cretae service
+MUST DO SERVICE LAB - WEBAPP-DBAPP
+
+TIPS: :set nu in vi editor it will show the line number
+      :set paste it will paste the lines in correct order
+	  
+SECRET
+Set encrypted value
+#echo -n "sqladmin" | base64
+#echo -n "password" |base64
+#kubectl create secret generic db-secret --from-literal=db-user="encryptedvalue=" 
+ --from-literal=db-password="encryptedvalue="
+To check the above secret
+#kubectl describe secret db-secret
+ To see the above output in yaml format
+#kubectl get secret db-secret -o yaml
+
+KUBE 5 - cont.
+
+How to check all namespaces and its deployments,pods ,etc..
+#kubectl get all -all-namespaces
+
+ResourceQuota
+create rq
+#vi resource-q1.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource100
+  namespace: production
+spec: 
+  hard:
+    pods: "2"
+	configmaps: "1"
+	
+To run this 1. create rq
+#kubectl create -f resource-q1.yaml
+2. create deploy
+#kubectl create deploy max-pod --image=nginx --replicas=2 -n production
+To check this
+#kubectl -n production get resourcequota
+it will display ..
+[#kubectl explain deploy, #kubectl explain service ..etc... it will show the required parameters
+like apiVersion,metadata,spec...etc..]
+
+Troubleshooting commands
+#kubectl -n production get events | less
+
+LXC Container lab procedure @kube5-3hrs_9mins refer
+**********************
+
+
+KUBE-6 VOLUME
+_______________
+
+storage class -important is Kind , Provissioner like kubernetes.io/aws-ebs ,azure file
+
+
+#mkdir pvtestlab
+#vi pv1.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv1
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+:wq!
+#kubectl create -f pv1.yaml
+
+Then we have to create claim
+
+vi pvc1.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name:pvc1
+spec;
+  storageClassName: manual
+  accessModes: 
+    -ReadWriteOnce
+  resources:
+    requests:
+	  storage: 2Gi
+:wq!
+#kubectl create -f pvc1.yaml
+
+Then we have to create pod to attach this volume
+
+vi nginx-pod.yaml
+apiVersion: v1
+kind: pod
+metadata:
+  name: nginx-web
+spec:
+  volumes:
+    - name: my-vol1
+	  persistentVolumeClaim:
+	    claimName: pvc1
+  containers:
+    - name : nginx-con
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+         - mountPath: "/usr/share/nginx/html"
+           name: my-vol1
+:wq!
+		   
+  
+Kuberenetes metrics
+
+Heapster--> cAdvisor
+Heapster monitoring, InfluxDB monitoring,Grafana monitoring
+****
+HPA -- Horizontal Auto Scaling -- scale out
+first install & configure metrics server
+create deployment
+kubectl autoscale deployment app1 --cpu-percent=20 --min=2 --max=10
+
+**********************************
+
+KUBE 7
+_______ 
+
+OPERATORS
+Helm -- Helm artifact hub -  artifacthub.io
+
+kubectl api-version
+
+before tht make sure openSSL is installed.
+install helm --First have to complete helm installation : go to the below url
+https://www.linode.com/docs/guides/how-to-install-apps-on-kubernetes-with-helm-3/
+
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+chmod 700 get_helm.sh
+./get_helm.sh
+
+OR
+
+$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+
+example: sear for one appln in hub & add repo for this appln:
+helm search hub ghost
+
+Add the stable repository:
+
+helm repo add stable https://charts.helm.sh/stable
+
+Update the repo to ensure you get the latest chart version:
+
+helm repo update
+
+The full name for the chart is stable/ghost. You can inspect the chart for more information:
+
+helm show readme stable/ghost
+
+*********
+INGRESS :
+image-video example--Ingress (Application level LB- Layer 7 LB )
+ **normal LB is layer 4 (TCP) **
+Do INGRESS lab  ASAP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+KUBE 6 : Persistant Volume
+
+KUBE 7 
+
+OPERATORS
+Helm -- Helm artifact hub -  artifacthub.io
+
+kubectl api-version
+
+before tht make sure openSSL is installed.
+install helm --First have to complete helm installation : go to the below url
+https://www.linode.com/docs/guides/how-to-install-apps-on-kubernetes-with-helm-3/
+
+curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+chmod 700 get_helm.sh
+./get_helm.sh
+
+OR
+
+$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+
+example: sear for one appln in hub & add repo for this appln:
+helm search hub ghost
+
+Add the stable repository:
+
+helm repo add stable https://charts.helm.sh/stable
+
+Update the repo to ensure you get the latest chart version:
+
+helm repo update
+
+The full name for the chart is stable/ghost. You can inspect the chart for more information:
+
+helm show readme stable/ghost
+
+*********
+INGRESS :
+image-video example--Ingress (Application level LB- Layer 7 LB )
+ **normal LB is layer 4 (TCP) **
+Do INGRESS lab  ASAP
+
+KUBE 8
+
+NFS Volume:
+ 1. create 1 new linux machine --install nfs-utils (nfs server)
+ 2. configure NFS : 
+ mkdir -p /source/nfs/kubeshare
+ vi /etc/exports
+ /source/nfs/kubeshare *(rw,sync,no_root_squash,no_subtree_check,no_all_squash,insecure)
+ #systemctl start nfs-server
+ #systemctl enable nfs-server
+ export the nfs share
+ #exportfs -arv
+  
+  to check this -- mount the nfs share in to the one kube worker node
+ #yum install nfs-utils
+  
+ #mount -t nfs nfsserverIP:/source/nfs/kubeshare /mnt
+ 
+ Next- create storage class in kmaster
+ REFER URL : https://www.exxactcorp.com/blog/Troubleshooting/deploying-dynamic-nfs-provisioning-in-kubernetes
+ STEPS: create on directory (project) in kmaster and within it create storage class yaml file
+ storage class yaml file - below is the example
+ 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: managed-nfs-storage
+provisioner: example.com/nfs
+parameters:
+  archiveOnDelete: "false"
+
+Next step is configure NFS-Client-Provisioner
+snapshot attached
+
+Next step is to cretae RBAC(role binding)
+file size didn't fit in page size so pls refer kube8 video 1:01:19
+[in RBAC- 1.create service account 2.create clusterrole 3.cluster role binding(bind to service account
+4.create role 5. rolebinding(bind to same service account)]
+ 
+
+Next step is create a class
+Refer kube8 video 1:06:40
+	
+Next step is create PVC
+snapshot attached -PVC creation yaml file
+
+Next step is to create pod (busybox pod)
+snapshot attached -pod_busyboxpod
+ If you face any error pls refer kube8 video 1:24:01
+ 
+STATEFULLSET:
+Stateful set uses internal DNS,Sticky identity
+DB-MASTER_SLAVE example.
+1 things to be note in statefullset: 1.ClusterIP: None and 2.VolumeClaimTemplates 3.statefulset
+
+[ClusterIP: None is called Headless Service(clusterIP is not allocated) ]
+
+HighPriorityClass
+
+KUBE: 9
+weavescope - install procedure
+1.make sure metallb running
+2.paste the below line.
+To install Weave Scope on your Kubernetes cluster, run
+
+kubectl apply -f "https://cloud.weave.works/k8s/scope.yaml?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+thats it.
+*Weavescope default port 4040
+
+Prometeus & Grafana
+Prometheus is used to collects the log & Grafana is used to visualize the logs
+Steps to follow:
+1.NFS server
+2.StorageClass
+Storage class file for default nfs storage (if we have multiple nfs storage, we can select  the storage with "annotaions")
+[apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+   name: managed-nfs-storage
+   annotaions: 
+     storageClass.kubernetes.io/is-default-class: true
+provisioner: example.com/nfs]
+parameters:
+  archiveOnDelete: "false"
+3.NFS client provisioner
+4.RBAC
+Before create PVC , install HELM and do the below steps
+#helm inspect values stable/prometheus > tmp/prometheus.values
+#vi tmp/prometheus.values
+edit
+remove clusterIP and give type: nodePort and nodePort : 32444 
+#helm inspect values stable/grafana > tmp/grafana.values
+vi tmp/grafana.values
+edit
+remove clusterIP and give type: nodePort and nodePort : 32444
+admin passwd: root 
+wq!
+then create ns for prometheus & grafana
+#kubectl cretae ns prometheus
+#kubectl cretae ns grafana
+then
+#helm install prometheus stable/prometheus --values tmp/prometheus.values --namespace prometheus
+5.PVC
+6.Helm
+7.Prometheus
+8.Grafana
+
+to install nfs server in ubuntu machine 
+#apt install nfs-kernel-server
+#systemctl status nfs-kernel-server
+
+
+to install nfs client in ubuntu machine 
+#apt install nfs-common
+
+*****************************************************************************************************
+15-01-2022 Prometheus & Grafana
+1. create storage class
+2. cretae nfs-client-provisioner
+3. create RBAC
+4. create PVC
+5. create POD
+
+
+
+https://www.youtube.com/watch?v=efiMiaFjtn8  --   deployment starategies
+https://www.youtube.com/watch?v=efiMiaFjtn8  -- deployment startegies
+Pls check liveness & readyness probe
+older version running with 5 pods-then deploy v2 yaml file that contains maxSurge: 1 & maxUnavailable:0
+it will deploy 1 v2pod then terminate 1 v1pod -- after some time all pods with v2 deplyed.
+
+#kubectl rollout undo deploy my-app
+blue green - double resource needed- v1 for users& v2 for test engineers-deploy both v1&v2-
+ex: create 2 match labels
+template:
+  metadata:
+    labels:
+	  app: my-app
+	  version: v1.0.0
+***
+template:
+  metadata:
+    labels:
+	  app: my-app
+	  version: v2.0.0
+***
+and give the below patch command
+#kubectl patch service my-app -p "{"spec":{"selection":{"version":"v2.0.0"}}}
+thenkubectl delete deploy my-app-v1
+Canary deployment
+v1-4 pods & v2 1pod initially deployed
+scale up or scale down manually
+#kubectl scale --replicas=1 my-app-v1
+
+https://www.youtube.com/watch?v=aTlQBofihJQ  --- readiness,liveness& startup probe--Rahul wagh
+https://www.youtube.com/watch?v=gnWS4FYlHeo  -- statefulset with headless service --kubetrain 
+https://www.youtube.com/watch?v=PzzFsvadZdY  -- security context on pod --kubetrain
+
+
+	
+  
